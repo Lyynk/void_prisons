@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS `jail_inmates` (
+    `citizenid` VARCHAR(50) NOT NULL,
+    `name` VARCHAR(100) NOT NULL,
+    `jail_time` INT NOT NULL DEFAULT 0,
+    `remaining_time` INT NOT NULL DEFAULT 0,
+    `reason` TEXT DEFAULT NULL,
+    `saved_appearance` LONGTEXT DEFAULT NULL,
+    `jailed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`citizenid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

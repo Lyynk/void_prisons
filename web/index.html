@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Void Prison Monitor</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Main Style sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="tablet-container" class="tablet-closed">
+        <!-- Tablet Bezel/Frame -->
+        <div class="tablet-frame">
+            <div class="tablet-screen">
+                
+                <!-- Main Header -->
+                <header class="tablet-header">
+                    <div class="header-logo-section">
+                        <div class="lspd-badge-container">
+                            <svg class="lspd-badge" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L4 5V11C4 16.52 7.42 21.64 12 23C16.58 21.64 20 16.52 20 11V5L12 2Z" fill="url(#badge-grad)" stroke="#00e5ff" stroke-width="1.5"/>
+                                <path d="M12 6V18" stroke="#00e5ff" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M8 10H16" stroke="#00e5ff" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="12" cy="10" r="1.5" fill="#00e5ff"/>
+                                <defs>
+                                    <linearGradient id="badge-grad" x1="12" y1="2" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+                                        <stop stop-color="#0a192f" stop-opacity="0.8"/>
+                                        <stop offset="1" stop-color="#001220" stop-opacity="0.95"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+                        <div class="header-text">
+                            <h1>VOID PRISON</h1>
+                            <p>INMATE MONITORING & CONTROL SYSTEM</p>
+                        </div>
+                    </div>
+
+                    <div class="header-info">
+                        <div class="status-indicator">
+                            <span class="pulse-dot"></span>
+                            <span id="connection-status">SECURE CONNECTION</span>
+                        </div>
+                        <div class="time-display" id="current-time">19:40</div>
+                    </div>
+                </header>
+
+                <!-- Search & Filters -->
+                <section class="controls-section">
+                    <div class="search-bar-container">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="search-input" placeholder="Search inmates by name, citizen ID or cell...">
+                    </div>
+                    <div class="stats-pills">
+                        <div class="stat-pill" id="total-inmates-pill">
+                            <span class="label">Total Inmates:</span>
+                            <span class="value" id="total-inmates-count">0</span>
+                        </div>
+                        <div class="stat-pill" id="online-inmates-pill">
+                            <span class="label">Online:</span>
+                            <span class="value" id="online-inmates-count">0</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Main Content Area -->
+                <main class="inmate-grid-container">
+                    <div id="no-inmates-message" class="hidden">
+                        <div class="alert-box">
+                            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <h3>NO ACTIVE INMATES RECORDED</h3>
+                            <p>All cells are currently empty. No active sentences stored in mainframe.</p>
+                        </div>
+                    </div>
+                    <div class="inmate-grid" id="inmate-grid">
+                        <!-- Dynamic Inmate Cards will be loaded here -->
+                    </div>
+                </main>
+
+                <!-- Action Confirmation Modal -->
+                <div class="modal-overlay hidden" id="action-modal">
+                    <div class="modal-card">
+                        <button class="close-modal-btn" id="close-modal-x">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                        
+                        <div class="modal-header">
+                            <div class="modal-inmate-info">
+                                <h2 id="modal-inmate-name">JOHN DOE</h2>
+                                <p>Citizen ID: <span id="modal-inmate-cid" class="highlight">CID9999</span></p>
+                            </div>
+                            <span class="modal-status-badge" id="modal-inmate-status">ONLINE</span>
+                        </div>
+
+                        <div class="modal-body">
+                            <!-- Sentence Meter -->
+                            <div class="sentence-summary-box">
+                                <div class="sentence-detail">
+                                    <span class="label">Original Sentence</span>
+                                    <span class="value" id="modal-total-sentence">100m</span>
+                                </div>
+                                <div class="sentence-detail">
+                                    <span class="label">Remaining Time</span>
+                                    <span class="value highlight" id="modal-remaining-sentence">45m</span>
+                                </div>
+                            </div>
+                            
+                            <div class="reason-container">
+                                <h4>REASON FOR IMPRISONMENT</h4>
+                                <p id="modal-inmate-reason">Attempted bank robbery, grand theft auto, evasion of arrest.</p>
+                            </div>
+
+                            <!-- Sentence Modification Controls -->
+                            <div class="control-group">
+                                <h3>MODIFY SENTENCE</h3>
+                                <p class="group-subtitle">Add or reduce months/seconds from the remaining sentence</p>
+                                
+                                <div class="quick-adjust-buttons">
+                                    <button class="btn btn-minus" data-amount="-10">-10 Months</button>
+                                    <button class="btn btn-minus" data-amount="-50">-50 Months</button>
+                                    <button class="btn btn-plus" data-amount="10">+10 Months</button>
+                                    <button class="btn btn-plus" data-amount="50">+50 Months</button>
+                                </div>
+
+                                <div class="custom-adjust-input">
+                                    <input type="number" id="custom-adjust-amount" placeholder="Custom amount...">
+                                    <button class="btn btn-cyan" id="custom-adjust-add-btn">Add</button>
+                                    <button class="btn btn-orange" id="custom-adjust-reduce-btn">Reduce</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button class="btn btn-danger btn-full" id="release-inmate-btn">RELEASE INMATE EARLY</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer / Close Tab -->
+                <footer class="tablet-footer">
+                    <button id="close-tablet-btn">EXIT APPLICATION</button>
+                </footer>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script src="script.js"></script>
+</body>
+</html>

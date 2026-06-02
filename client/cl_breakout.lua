@@ -73,7 +73,8 @@ function StartHacking()
 
     if completed then
         -- Play hacking minigame
-        local success = lib.skillCheck({'medium', 'medium', 'hard', 'hard'}, {'w', 'a', 's', 'd'})
+        local minigame = Config.Breakout.Minigame or { stages = {'medium', 'medium', 'hard', 'hard'}, keys = {'w', 'a', 's', 'd'} }
+        local success = lib.skillCheck(minigame.stages, minigame.keys)
 
         if success then
             -- Trigger breakout success on server

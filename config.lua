@@ -6,7 +6,7 @@ Config.Inventory = 'ox'  -- Options: 'qb' (qb-inventory) or 'ox' (ox_inventory)
 Config.Appearance = 'illenium' -- Options: 'qb' (qb-clothing/illenium default compatibility) or 'illenium' (illenium-appearance exports)
 
 -- General Settings
-Config.JailTimeMultiplier = 1 -- Multiplier for jail time ticks. 1 tick = 1 second. (Set to 60 if you want 1 month = 1 minute, etc.)
+Config.JailTimeMultiplier = 60 -- Multiplier for jail time ticks. 1 tick = 1 second. (Set to 60 if you want 1 month = 1 minute, etc.)
 Config.AlertPoliceOnBreakout = true -- Whether police are notified when a breakout is started
 Config.PoliceJobs = { 'police', 'bcso', 'sasp', 'sheriff' } -- Jobs considered "police" who can use the jail tablet or receive alerts
 
@@ -30,7 +30,10 @@ Config.Breakout = {
     HackCoords = vector3(1792.83, 2603.88, 45.56), -- Location of the terminal to hack
     RequiredItem = 'gate_hack_device', -- Item needed to hack the prison doors
     HackDuration = 15000, -- Duration of the hacking animation in ms
-    MinigameType = 'skillcheck', -- Minigame options: 'skillcheck' or 'numbers'
+    Minigame = {
+        stages = {'medium', 'medium', 'hard', 'hard'}, -- stages for ox_lib skillCheck
+        keys = {'w', 'a', 's', 'd'}                    -- keys to press
+    },
     PoliceAlertCooldown = 60000, -- Cooldown for police notification in ms
     BreakoutDuration = 300, -- How long the gates remain unlocked/jail break is active (in seconds)
 }
@@ -48,7 +51,8 @@ Config.Jobs = {
         duration = 8000, -- time to complete task in ms
         timeReduction = 15, -- sentence reduction in seconds/months
         anim = { dict = "amb@world_human_janitor@broom@idle_a", clip = "idle_a" },
-        prop = { model = "prop_tool_broom", bone = 28422, pos = vector3(0.01, 0.04, -0.03), rot = vector3(0.0, 0.0, 0.0) }
+        prop = { model = "prop_tool_broom", bone = 28422, pos = vector3(0.01, 0.04, -0.03), rot = vector3(0.0, 0.0, 0.0) },
+        minigame = nil
     },
     dishes = {
         name = "Washing Dishes",
@@ -59,7 +63,8 @@ Config.Jobs = {
         duration = 10000,
         timeReduction = 20,
         anim = { dict = "prop_carry_paddle", clip = "idle" }, -- placeholder anim or custom
-        prop = nil
+        prop = nil,
+        minigame = nil
     },
     laundry = {
         name = "Doing Laundry",
@@ -70,7 +75,8 @@ Config.Jobs = {
         duration = 12000,
         timeReduction = 25,
         anim = { dict = "amb@prop_human_bum_shopping_cart@male@idle_a", clip = "idle_c" },
-        prop = nil
+        prop = nil,
+        minigame = nil
     },
     electrical = {
         name = "Electrical Maintenance",
@@ -81,7 +87,11 @@ Config.Jobs = {
         duration = 6000,
         timeReduction = 30,
         anim = { dict = "amb@world_human_welding@male@base", clip = "base" },
-        prop = nil
+        prop = nil,
+        minigame = {
+            stages = {'easy', 'easy', 'medium'},
+            keys = {'w', 'a', 's', 'd'}
+        }
     }
 }
 

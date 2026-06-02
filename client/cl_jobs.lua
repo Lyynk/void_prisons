@@ -105,21 +105,28 @@ CreateThread(function()
                 if isJailed and IsControlJustPressed(0, 38) then -- E key
                     lib.hideTextUI()
 
-                    if jobKey == 'electrical' then
-                        -- Electrical job requires a skillcheck first!
-                        local success = lib.skillCheck({'easy', 'easy', 'medium'}, {'w', 'a', 's', 'd'})
+                    if jobConfig.minigame then
+                        local success = lib.skillCheck(jobConfig.minigame.stages, jobConfig.minigame.keys)
                         if success then
                             PerformJob(jobKey, jobConfig)
                         else
-                            lib.notify({
-                                title = 'Void Prison',
-                                description = 'You short-circuited the panel and shocked yourself!',
-                                type = 'error'
-                            })
-                            -- Play shocking effect/animation
-                            local ped = PlayerPedId()
-                            PlayPain(ped, 7, 0)
-                            TaskPlayAnim(ped, "combat@damage@rb_react", "rb_react_left", 8.0, -8.0, 1000, 0, 0, false, false, false)
+                            if jobKey == 'electrical' then
+                                lib.notify({
+                                    title = 'Void Prison',
+                                    description = 'You short-circuited the panel and shocked yourself!',
+                                    type = 'error'
+                                })
+                                -- Play shocking effect/animation
+                                local ped = PlayerPedId()
+                                PlayPain(ped, 7, 0)
+                                TaskPlayAnim(ped, "combat@damage@rb_react", "rb_react_left", 8.0, -8.0, 1000, 0, 0, false, false, false)
+                            else
+                                lib.notify({
+                                    title = 'Void Prison',
+                                    description = 'Task failed.',
+                                    type = 'error'
+                                })
+                            end
                         end
                     else
                         PerformJob(jobKey, jobConfig)

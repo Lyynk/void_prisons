@@ -1,46 +1,37 @@
-local QBCore = nil
+local Bridge = exports['void_bridge']:GetBridge()
 local JailedPlayers = {} -- Cache: [source] = { citizenid = x, name = y, remaining = z }
 
-if Config.Framework == 'qb' then
-    QBCore = exports['qb-core']:GetCoreObject()
-end
-
 -- ============================================================================
--- FRAMEWORK BRIDGES
+-- FRAMEWORK BRIDGES (ROUTED TO VOID_BRIDGE)
 -- ============================================================================
 
 local function GetPlayer(source)
-    if Config.Framework == 'qbx' then
-        return exports.qbx_core:GetPlayer(source)
-    else
-        return QBCore.Functions.GetPlayer(source)
-    end
+    return Bridge.GetPlayer(source)
 end
 
 local function GetPlayerByCitizenId(citizenid)
-    if Config.Framework == 'qbx' then
-        return exports.qbx_core:GetPlayerByCitizenId(citizenid)
-    else
-        return QBCore.Functions.GetPlayerByCitizenId(citizenid)
-    end
+    return Bridge.GetPlayerByCitizenId(citizenid)
 end
 
 local function GetCitizenId(source)
     local player = GetPlayer(source)
     if not player then return nil end
-    return player.PlayerData.citizenid
+    return player.GetData().citizenid
 end
 
 local function GetPlayerName(source)
     local player = GetPlayer(source)
     if not player then return "Unknown" end
-    return player.PlayerData.charinfo.firstname .. " " .. player.PlayerData.charinfo.lastname
+    return player.GetData().name
 end
 
 local function IsPolice(source)
+    if Bridge.HasPermission(source, "police") or Bridge.HasPermission(source, "leo") then
+        return true
+    end
     local player = GetPlayer(source)
     if not player then return false end
-    local jobName = player.PlayerData.job.name
+    local jobName = player.GetData().job.name
     for _, job in ipairs(Config.PoliceJobs) do
         if job == jobName then
             return true
@@ -50,25 +41,13 @@ local function IsPolice(source)
 end
 
 local function NotifyPlayer(source, message, type)
-    if Config.OkokNotify.enabled then
-        TriggerClientEvent('okokNotify:Alert', source, 'Void Prison', message, 5000, type or 'info', true)
-    else
-        TriggerClientEvent('ox_lib:notify', source, {
-            title = 'Void Prison',
-            description = message,
-            type = type or 'info'
-        })
-    end
+    Bridge.Notify(source, message, type)
 end
 
 local function SetJailMetadata(source, time)
-    if Config.Framework == 'qbx' then
-        exports.qbx_core:SetMetadata(source, 'jailtime', time)
-    else
-        local player = GetPlayer(source)
-        if player then
-            player.Functions.SetMetaData('jailtime', time)
-        end
+    local player = GetPlayer(source)
+    if player then
+        player.SetMetaData('jailtime', time)
     end
 end
 
@@ -76,18 +55,13 @@ end
 -- DATABASE & SPANNING LOGIC
 -- ============================================================================
 
--- Register stashes on start if using ox_inventory
-MySQL.ready(function()
-    -- Perform cleanup or initialization checks if needed
-end)
-
 local function LoadJailState(source)
     local citizenid = GetCitizenId(source)
     if not citizenid then return end
 
     MySQL.single('SELECT * FROM jail_inmates WHERE citizenid = ?', {citizenid}, function(result)
         if result then
-            -- Player is marked as jailed in our database
+            -- Player is marked as jailed in database
             JailedPlayers[source] = {
                 citizenid = citizenid,
                 name = result.name,
@@ -97,7 +71,8 @@ local function LoadJailState(source)
             Player(source).state.isJailed = true
 
             -- Register ox bunk/locker stashes
-            if Config.Inventory == 'ox' then
+            local invSys = Bridge.Inventory.GetSystem()
+            if invSys == 'ox_inventory' then
                 exports.ox_inventory:RegisterStash('prison_locker_' .. citizenid, 'Prison Locker', 50, 100000, citizenid)
                 exports.ox_inventory:RegisterStash('prison_bunk_' .. citizenid, 'Cell Bunk Stash', 30, 50000, citizenid)
             end
@@ -106,13 +81,8 @@ local function LoadJailState(source)
             TriggerClientEvent('void-prison:client:Jailed', source, result.remaining_time, result.saved_appearance)
         else
             -- Check if player metadata wrongly says they are jailed
-            local metaTime = 0
-            if Config.Framework == 'qbx' then
-                metaTime = exports.qbx_core:GetMetadata(source, 'jailtime') or 0
-            else
-                local p = GetPlayer(source)
-                if p then metaTime = p.PlayerData.metadata['jailtime'] or 0 end
-            end
+            local player = GetPlayer(source)
+            local metaTime = player and player.GetMetaData('jailtime') or 0
 
             if metaTime > 0 then
                 SetJailMetadata(source, 0)
@@ -122,17 +92,18 @@ local function LoadJailState(source)
     end)
 end
 
--- Handle QBox / QBCore player loaded events
-if Config.Framework == 'qbx' then
-    RegisterNetEvent('qbx_core:server:onPlayerLoaded', function(source)
-        LoadJailState(source)
-    end)
-else
-    RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
-        local src = source
-        LoadJailState(src)
-    end)
-end
+-- Handle Player Loaded events (Framework agnostic + Standalone trigger)
+RegisterNetEvent('QBCore:Server:OnPlayerLoaded', function()
+    LoadJailState(source)
+end)
+
+RegisterNetEvent('esx:playerLoaded', function(id, xPlayer)
+    LoadJailState(id)
+end)
+
+RegisterNetEvent('void_bridge:server:requestPlayerData', function()
+    LoadJailState(source)
+end)
 
 AddEventHandler('playerDropped', function()
     local src = source
@@ -149,7 +120,8 @@ end)
 -- ============================================================================
 
 local function ConfiscateInventory(source, citizenid)
-    if Config.Inventory == 'ox' then
+    local invSys = Bridge.Inventory.GetSystem()
+    if invSys == 'ox_inventory' then
         exports.ox_inventory:RegisterStash('prison_locker_' .. citizenid, 'Prison Locker', 50, 100000, citizenid)
         local playerItems = exports.ox_inventory:GetInventoryItems(source)
         if playerItems then
@@ -162,18 +134,21 @@ local function ConfiscateInventory(source, citizenid)
             end
         end
     else
-        -- qb-inventory logic
-        local player = GetPlayer(source)
-        if player then
-            local items = player.PlayerData.items
-            if items then
-                -- Backup items to DB stashitems table
-                MySQL.insert('INSERT INTO stashitems (stash, items) VALUES (?, ?) ON DUPLICATE KEY UPDATE items = ?', {
-                    'prison_locker_' .. citizenid,
-                    json.encode(items),
-                    json.encode(items)
-                })
-                player.Functions.ClearInventory()
+        -- Fallback: standard QBCore inventory stash backup
+        local fw = Bridge.GetFramework()
+        if fw == "qbcore" then
+            local QBCore = exports['qb-core']:GetCoreObject()
+            local qbPlayer = QBCore.Functions.GetPlayer(source)
+            if qbPlayer then
+                local items = qbPlayer.PlayerData.items
+                if items then
+                    MySQL.insert('INSERT INTO stashitems (stash, items) VALUES (?, ?) ON DUPLICATE KEY UPDATE items = ?', {
+                        'prison_locker_' .. citizenid,
+                        json.encode(items),
+                        json.encode(items)
+                    })
+                    qbPlayer.Functions.ClearInventory()
+                end
             end
         end
     end
@@ -213,7 +188,8 @@ local function JailPlayer(targetSrc, time, reason, staffSrc)
             Player(targetSrc).state.isJailed = true
 
             -- Register stashes
-            if Config.Inventory == 'ox' then
+            local invSys = Bridge.Inventory.GetSystem()
+            if invSys == 'ox_inventory' then
                 exports.ox_inventory:RegisterStash('prison_locker_' .. citizenid, 'Prison Locker', 50, 100000, citizenid)
                 exports.ox_inventory:RegisterStash('prison_bunk_' .. citizenid, 'Cell Bunk Stash', 30, 50000, citizenid)
             end
@@ -274,7 +250,7 @@ end
 exports('JailPlayer', JailPlayer)
 exports('UnjailPlayer', UnjailPlayer)
 
--- Compatibility Events (e.g. for ps-mdt or qb-policejob triggers)
+-- Compatibility Events (e.g. for MDTs or Police Job triggers)
 RegisterNetEvent('police:server:JailPlayer', function(playerId, time, reason)
     local src = source
     if src > 0 and not IsPolice(src) then return end
@@ -366,7 +342,7 @@ end)
 -- NUI TABLET & CALLBACKS
 -- ============================================================================
 
--- Command / Item use to open tablet
+-- Command to open tablet
 RegisterCommand('jailtablet', function(source)
     local src = source
     if not IsPolice(src) then
@@ -376,17 +352,23 @@ RegisterCommand('jailtablet', function(source)
     TriggerClientEvent('void-prison:client:OpenTablet', src)
 end, false)
 
--- qb-inventory or ox_inventory item use registration
-if Config.Inventory == 'ox' then
-    -- If they want to use an item, they can configure it in ox_inventory directly.
-    -- Or we can hook it or export it.
-else
-    -- QBCore item use
-    if Config.Framework == 'qb' then
-        QBCore.Functions.CreateUseableItem("police_tablet", function(source, item)
-            local src = source
-            if IsPolice(src) then
-                TriggerClientEvent('void-prison:client:OpenTablet', src)
+-- usable item registration
+local fw = Bridge.GetFramework()
+if fw == 'qbcore' then
+    local QBCore = exports['qb-core']:GetCoreObject()
+    QBCore.Functions.CreateUseableItem("police_tablet", function(source, item)
+        if IsPolice(source) then
+            TriggerClientEvent('void-prison:client:OpenTablet', source)
+        end
+    end)
+elseif fw == 'esx' then
+    local ESX = nil
+    pcall(function() ESX = exports['es_extended']:getSharedObject() end)
+    if not ESX then TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end) end
+    if ESX then
+        ESX.RegisterUsableItem('police_tablet', function(source)
+            if IsPolice(source) then
+                TriggerClientEvent('void-prison:client:OpenTablet', source)
             end
         end)
     end
@@ -439,7 +421,7 @@ RegisterNetEvent('void-prison:server:UpdateSentence', function(data)
             MySQL.update('UPDATE jail_inmates SET remaining_time = ? WHERE citizenid = ?', {newRemaining, targetCid}, function()
                 local targetPlayer = GetPlayerByCitizenId(targetCid)
                 if targetPlayer then
-                    local targetSrc = targetPlayer.PlayerData.source
+                    local targetSrc = targetPlayer.GetData().source
                     if JailedPlayers[targetSrc] then
                         JailedPlayers[targetSrc].remaining = newRemaining
                     end
@@ -464,7 +446,7 @@ RegisterNetEvent('void-prison:server:ReleaseInmate', function(data)
     local targetPlayer = GetPlayerByCitizenId(targetCid)
 
     if targetPlayer then
-        UnjailPlayer(targetPlayer.PlayerData.source, src)
+        UnjailPlayer(targetPlayer.GetData().source, src)
     else
         -- If offline, just delete from database
         MySQL.update('DELETE FROM jail_inmates WHERE citizenid = ?', {targetCid}, function(affectedRows)
@@ -492,9 +474,9 @@ RegisterNetEvent('void-prison:server:OpenBunkStash', function(bunkId)
         return
     end
 
-    if Config.Inventory == 'ox' then
-        -- registered already, just open
-        -- We will open it on the client side
+    local invSys = Bridge.Inventory.GetSystem()
+    if invSys == 'ox_inventory' then
+        -- Open stash directly client side
     else
         -- qb-inventory open stash
         TriggerClientEvent('inventory:client:SetCurrentStash', src, 'prison_bunk_' .. citizenid)
@@ -512,11 +494,10 @@ RegisterNetEvent('void-prison:server:OpenLocker', function()
         return
     end
 
-    -- Check if player has locker stash items
-    if Config.Inventory == 'ox' then
+    local invSys = Bridge.Inventory.GetSystem()
+    if invSys == 'ox_inventory' then
         -- Open locker stash
         exports.ox_inventory:RegisterStash('prison_locker_' .. citizenid, 'Prison Locker', 50, 100000, citizenid)
-        -- We'll let client open it
     else
         -- qb-inventory open locker
         TriggerClientEvent('inventory:client:SetCurrentStash', src, 'prison_locker_' .. citizenid)
@@ -529,28 +510,14 @@ end)
 -- ============================================================================
 
 local function GetItemCount(source, itemName)
-    if Config.Inventory == 'ox' then
-        return exports.ox_inventory:Search(source, 'count', itemName) or 0
-    else
-        local player = GetPlayer(source)
-        if player then
-            local item = player.Functions.GetItemByName(itemName)
-            return item and item.amount or 0
-        end
+    if Bridge.Inventory.HasItem(source, itemName, 1) then
+        return 1
     end
     return 0
 end
 
 local function RemoveInventoryItem(source, itemName, amount)
-    if Config.Inventory == 'ox' then
-        exports.ox_inventory:RemoveItem(source, itemName, amount)
-    else
-        local player = GetPlayer(source)
-        if player then
-            player.Functions.RemoveItem(itemName, amount)
-            TriggerClientEvent('inventory:client:ItemBox', source, QBCore.Shared.Items[itemName], "remove")
-        end
-    end
+    Bridge.Inventory.RemoveItem(source, itemName, amount)
 end
 
 local function AlertPolice(message)
@@ -597,4 +564,3 @@ end)
 RegisterNetEvent('void-prison:server:TriggerSilentAlarm', function()
     AlertPolice("PRISON ALARM: Security grid tampering detected near terminal.")
 end)
-

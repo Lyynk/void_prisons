@@ -1,11 +1,12 @@
 fx_version 'cerulean'
 game 'gta5'
-author 'Antigravity'
+author 'Fae_Alchemy'
 description 'Void Prison - Dynamic Jail Script with MDT, Jobs, Breakouts and Tablet UI'
 version '1.0.0'
 
 dependencies {
     'ox_lib',
+    'void_bridge'
 }
 
 shared_scripts {

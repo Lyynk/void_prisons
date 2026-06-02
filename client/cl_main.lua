@@ -1,3 +1,4 @@
+local Bridge = exports['void_bridge']:GetBridge()
 local isJailed = false
 local jailTime = 0
 local isBreakoutActive = false
@@ -172,7 +173,7 @@ for _, bunk in ipairs(Config.BunkStashes) do
     function point:nearby()
         if isJailed and IsControlJustPressed(0, 38) then -- E key
             TriggerServerEvent('void-prison:server:OpenBunkStash', bunk.id)
-            if Config.Inventory == 'ox' then
+            if Bridge.Inventory.GetSystem() == 'ox_inventory' then
                 -- Get player citizen ID client side or trigger server event.
                 -- For ox, we can open the stash directly
                 lib.callback('void-prison:server:GetCitizenId', false, function(citizenid)
@@ -210,7 +211,7 @@ function lockerPoint:nearby()
             })
         else
             TriggerServerEvent('void-prison:server:OpenLocker')
-            if Config.Inventory == 'ox' then
+            if Bridge.Inventory.GetSystem() == 'ox_inventory' then
                 lib.callback('void-prison:server:GetCitizenId', false, function(citizenid)
                     if citizenid then
                         exports.ox_inventory:openInventory('stash', { id = 'prison_locker_' .. citizenid })

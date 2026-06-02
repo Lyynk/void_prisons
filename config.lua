@@ -1,8 +1,7 @@
 Config = {}
 
 -- Framework Settings
-Config.Framework = 'qbx' -- Options: 'qb' (QBCore) or 'qbx' (QBox)
-Config.Inventory = 'ox'  -- Options: 'qb' (qb-inventory) or 'ox' (ox_inventory)
+-- Note: Framework, Inventory and Metadata settings are now handled dynamically by void_bridge.
 Config.Appearance = 'illenium' -- Options: 'qb' (qb-clothing/illenium default compatibility) or 'illenium' (illenium-appearance exports)
 
 -- General Settings
